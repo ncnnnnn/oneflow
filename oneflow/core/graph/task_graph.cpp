@@ -366,18 +366,24 @@ void TaskGraph::SetOrderInGraphForEachNode() {
 
 void TaskGraph::MergeChain() {
   int64_t chain_id = 0;
+  HashMap<int64_t, int64_t> global_area2chain_id;
   for (auto* this_node : ordered_task_nodes_) {
     // skip if this node has been set in a chain.
     if (this_node->chain_id() != -1) { continue; }
 
     CHECK_EQ(this_node->chain_id(), -1);
     if (CanBeMergedInChain(this_node)) {
-      TraverseConnectedSubGraphMergeInThisChain(this_node, chain_id);
+      int64_t key = this_node->GlobalWorkStreamId() + this_node->area_id();
+      if (global_area2chain_id.find(key) == global_area2chain_id.end()) {
+        global_area2chain_id.emplace(key, chain_id);
+        ++chain_id;
+      }
+      this_node->set_chain_id(global_area2chain_id.at(key));
+      // TraverseConnectedSubGraphMergeInThisChain(this_node, chain_id);
     } else {
       this_node->set_chain_id(chain_id);
+      ++chain_id;
     }
-
-    ++chain_id;
   }
   for (auto* node : ordered_task_nodes_) { CHECK_NE(node->chain_id(), -1); }
 }
